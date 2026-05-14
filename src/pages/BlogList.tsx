@@ -132,7 +132,7 @@ const BlogList = () => {
           {new Date(blog.created_at).toLocaleDateString()}
         </TableCell>
         <TableCell className="space-x-1 text-right">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/blogs/${blog.id}`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/blogs/${blog.slug || blog.id}`)}>
             <Eye className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" onClick={() => navigate(`/blogs/${blog.id}/edit`)}>
