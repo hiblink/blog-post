@@ -9,6 +9,9 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type BlogWithCategory = Tables<"blogs">;
 
+// UUID regex pattern
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const BlogView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -19,7 +22,27 @@ const BlogView = () => {
     if (!id) return;
 
     const fetchBlog = async () => {
-      const { data } = await supabase.from("blogs").select("*").eq("id", id).single();
+      const isUuid = UUID_REGEX.test(id);
+      
+      let data = null;
+      
+      if (isUuid) {
+        // UUID param - query by id
+        const res = await supabase.from("blogs").select("*").eq("id", id).single();
+        data = res.data;
+      } else {
+        // First try slug lookup
+        const slugRes = await supabase.from("blogs").select("*").eq("slug", id).maybeSingle();
+        
+        if (slugRes.data) {
+          data = slugRes.data;
+        } else {
+          // Fallback: try querying by numeric ID (for old blogs)
+          const idRes = await supabase.from("blogs").select("*").eq("id", id).maybeSingle();
+          data = idRes.data;
+        }
+      }
+      
       setBlog((data as BlogWithCategory) ?? null);
     };
 
@@ -36,7 +59,7 @@ const BlogView = () => {
     const { error } = await supabase
       .from("blogs")
       .update({ rating: newRating.toString() })
-      .eq("id", id);
+      .eq("id", blog.id);
 
     if (!error) {
       setBlog({ ...blog, rating: newRating.toString() });
@@ -60,7 +83,7 @@ const BlogView = () => {
           <Button variant="ghost" onClick={() => navigate("/blogs")} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Back to List
           </Button>
-          <Button variant="outline" onClick={() => navigate(`/blogs/${id}/edit`)} className="gap-2">
+          <Button variant="outline" onClick={() => navigate(`/blogs/${blog.id}/edit`)} className="gap-2">
             <Pencil className="h-4 w-4" /> Edit
           </Button>
         </div>
