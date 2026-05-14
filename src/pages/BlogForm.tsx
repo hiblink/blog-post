@@ -1,7 +1,7 @@
 import { useEffect, useState, ChangeEvent } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Upload, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, Upload, X } from "lucide-react";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -22,6 +22,8 @@ const BlogForm = () => {
   const { toast } = useToast();
 
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Uncategorized");
   const [tag, setTag] = useState("");
@@ -32,6 +34,29 @@ const BlogForm = () => {
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // Convert title to a URL-friendly slug
+  const generateSlug = (text: string): string => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "") // Remove special characters
+      .replace(/\s+/g, "-")      // Replace spaces with hyphens
+      .replace(/-+/g, "-")       // Collapse multiple hyphens
+      .replace(/^-+|-+$/g, "");  // Trim leading/trailing hyphens
+  };
+
+  const handleTitleChange = (value: string) => {
+    setTitle(value);
+    if (!slugManuallyEdited) {
+      setSlug(generateSlug(value));
+    }
+  };
+
+  const handleSlugChange = (value: string) => {
+    setSlugManuallyEdited(true);
+    setSlug(generateSlug(value));
+  };
+
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -41,6 +66,8 @@ const BlogForm = () => {
       if (error || !data) return;
 
     setTitle(data.title);
+    setSlug(data.slug ?? "");
+    setSlugManuallyEdited(true);
     setDescription(data.description ?? "");
     setCategory(data.category ?? "Uncategorized");
     setTag(data.tag ?? "");
@@ -143,6 +170,7 @@ const blogData = {
   image_url: imageUrl || null,
   price,
   rating,
+  slug: slug || null,
 };
 
 try {
@@ -155,15 +183,23 @@ try {
     console.log('✅ Update response:', { data, error });
     if (error) throw error;
     toast({ title: "Updated", description: "Blog updated successfully." });
+    navigate("/blogs");
   } else {
     console.log('➕ Creating new blog');
     const { error, data } = await supabase.from("blogs").insert(blogData).select();
     console.log('✅ Insert response:', { data, error });
     if (error) throw error;
     toast({ title: "Created", description: "Blog created successfully." });
-  }
-
+    // Navigate to the blog's slug URL if available
+    const createdBlog = data?.[0];
+    if (createdBlog?.slug) {
+      navigate(`/blogs/${createdBlog.slug}`);
+    } else if (createdBlog?.id) {
+      navigate(`/blogs/${createdBlog.id}`);
+    } else {
       navigate("/blogs");
+    }
+  }
     } catch (error) {
       console.error('❌ Blog operation failed:', error);
       console.error('❌ Error details:', {
@@ -196,7 +232,31 @@ try {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Title</label>
-                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Blog title" required />
+                <Input value={title} onChange={(event) => handleTitleChange(event.target.value)} placeholder="Blog title" required />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Slug (URL)</label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={slug} 
+                    onChange={(event) => handleSlugChange(event.target.value)} 
+                    placeholder="blog-url-slug"
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      setSlugManuallyEdited(false);
+                      setSlug(generateSlug(title));
+                    }}
+                    title="Regenerate slug from title"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">URL: /blogs/{slug || "your-slug"}</p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Category</label>
