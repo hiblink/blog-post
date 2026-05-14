@@ -22,6 +22,7 @@ export type Database = {
           image_url: string | null
           price: string
           rating: string
+          slug: string | null
           title: string
           description: string
           tag: string
@@ -33,6 +34,7 @@ export type Database = {
           image_url?: string | null
           price?: string
           rating?: string
+          slug?: string | null
           title: string
           description?: string
           tag?: string
@@ -44,6 +46,7 @@ export type Database = {
           image_url?: string | null
           price?: string
           rating?: string
+          slug?: string | null
           title?: string
           description?: string
           tag?: string
